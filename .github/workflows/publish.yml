@@ -22,7 +22,7 @@ jobs:
         uses: nuget/setup-nuget@v1
       - name: Get Build Version
         run: |
-          echo "BUILD_VERSION=${{ format('{0}.{1}', env.BUILD_VER, env.GITHUB_RUN_NUMBER ) }}" >> $GITHUB_ENV
+          echo "BUILD_VERSION=${{ format('{0}.{1}', env.BUILD_VER, vars.GITHUB_RUN_NUMBER ) }}" >> $GITHUB_ENV
       - name: Output build number
         run: echo $(BUILD_VERSION)
       - name: Build
