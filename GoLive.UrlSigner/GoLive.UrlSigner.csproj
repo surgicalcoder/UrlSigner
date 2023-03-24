@@ -9,7 +9,7 @@
         <Description>
             .net 6.0 URL signer and verifier (with Timed Url Signing)
         </Description>
-        <Copyright>Copyright 2021 - SurgicalCoder</Copyright>
+        <Copyright>Copyright 2021 - 2023 - SurgicalCoder</Copyright>
         <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <PublishRepositoryUrl>true</PublishRepositoryUrl>
