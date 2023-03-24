@@ -24,6 +24,6 @@ jobs:
         run: |
           echo "BUILD_VERSION=${{ format('{0}.{1}', env.BUILD_VER, github.run_number ) }}" >> $GITHUB_ENV
       - name: Build
-        run: dotnet pack $SOLUTION --configuration Release -p:Version=$BUILD_VERSION -p:PackageVersion=$BUILD_VERSION
+        run: dotnet pack $SOLUTION --configuration Release -p:Version=$BUILD_VERSION -p:PackageVersion=$BUILD_VERSION -p:GeneratePackageOnBuild=false
       - name: Publish
         run: nuget push **\*.nupkg -Source 'https://api.nuget.org/v3/index.json' -ApiKey ${{secrets.NUGET_KEY}}
