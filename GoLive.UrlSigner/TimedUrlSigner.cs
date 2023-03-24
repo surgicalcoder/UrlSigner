@@ -30,7 +30,7 @@ namespace GoLive.UrlSigner;
             return Signer.Sign(url);
         }
 
-        public bool Verify(ReadOnlySpan<char> url)
+        public bool Verify(scoped ReadOnlySpan<char> url)
         {
             if (url == null)
             {
