@@ -19,7 +19,7 @@ namespace GoLive.UrlSigner;
 
         public bool Verify(Uri url) => Verify(url.ToString());
 
-        public string Sign(ReadOnlySpan<char> url, TimeSpan ttl)
+        public string Sign(scoped ReadOnlySpan<char> url, TimeSpan ttl)
         {
             if (url == null)
             {
@@ -37,7 +37,7 @@ namespace GoLive.UrlSigner;
             return Signer.Sign(url);
         }
 
-        public bool Verify(ReadOnlySpan<char> url)
+        public bool Verify(scoped ReadOnlySpan<char> url)
         {
             if (url == null)
             {
