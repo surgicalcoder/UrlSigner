@@ -11,14 +11,6 @@ public class HmacUrlSignerTest
     private const string TestString = "https://www.example.com/";
 
     [Fact]
-    public static void RoundtripUri()
-    {
-        var signer = new HmacUrlSigner<HMACSHA512>(Key);
-        var signedUri = signer.Sign(TestUri);
-        Assert.True(signer.Verify(signedUri));
-    }
-
-    [Fact]
     public static void RoundtripString()
     {
         var signer = new HmacUrlSigner<HMACSHA512>(Key);

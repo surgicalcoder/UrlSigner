@@ -99,7 +99,6 @@ public static class Extensions
             if (fragmentIndex < 0)
             {
                 fragment = null;
-
                 return url;
             }
 

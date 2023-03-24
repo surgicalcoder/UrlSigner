@@ -11,13 +11,6 @@ namespace GoLive.UrlSigner;
         {
             this.Signer = signer;
         }
-        
-        public Uri Sign(Uri url, TimeSpan ttl)
-        {
-            return new Uri(Sign(url.ToString().AsSpan(), ttl));
-        }
-
-        public bool Verify(Uri url) => Verify(url.ToString());
 
         public string Sign(ReadOnlySpan<char> url, TimeSpan ttl)
         {

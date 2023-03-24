@@ -32,8 +32,6 @@ namespace GoLive.UrlSigner;
             return string.Concat(baseUrl.AppendParameter("sig", sigString), fragment);
         }
 
-        public Uri Sign(Uri url) => new(Sign(url.ToString()));
-
         public bool Verify(ReadOnlySpan<char> url)
         {
             if (url == null || url.Length == 0)
@@ -59,8 +57,6 @@ namespace GoLive.UrlSigner;
                 return false;
             }
         }
-
-        public bool Verify(Uri url) => Verify(url.ToString());
 
         public ReadOnlyMemory<byte> Key { protected get; set; }
     }
