@@ -22,9 +22,7 @@ jobs:
       - name: Get Build Version
         run: |
           echo "VERSION_NUMBER_WITH_OFFSET=2.0.$((BUILD_VERSION))" >> $GITHUB_ENV
-      - name: Restore dependencies
-        run: nuget restore $SOLUTION
       - name: Build
-        run: dotnet build $SOLUTION --configuration Release -p:Version=$BUILD_VERSION --no-restore
+        run: dotnet pack $SOLUTION --configuration Release -p:Version=$BUILD_VERSION
       - name: Publish
         run: nuget push **\*.nupkg -Source 'https://api.nuget.org/v3/index.json' -ApiKey ${{secrets.NUGET_KEY}}
