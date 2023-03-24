@@ -2,16 +2,27 @@
 using System.Security.Cryptography;
 
 namespace GoLive.UrlSigner;
-public class HmacUrlSigner<TAlg> : UrlSigner where TAlg : KeyedHashAlgorithm, new() {
-    protected override byte[] GetSignature(ReadOnlySpan<byte> key, ReadOnlySpan<byte> data)
+public class HmacUrlSigner<TAlg> : UrlSigner where TAlg : KeyedHashAlgorithm, new()
+{
+    public HmacUrlSigner(ReadOnlyMemory<byte> key)
     {
-        using (var alg = new TAlg { Key = key.ToArray() })
+        if (key.Length == 0)
+        {
+            throw new ArgumentNullException(nameof(Key));
+        }
+        Key = key;  
+    }
+
+    protected override byte[] GetSignature(ReadOnlySpan<byte> data)
+    {
+        using (var alg = new TAlg { Key = Key.ToArray() })
         {
             return alg.ComputeHash(data.ToArray());
         }
     }
 
-    protected override bool VerifySignature(ReadOnlySpan<byte> key, ReadOnlySpan<byte> data, ReadOnlySpan<byte> sig) {
+    protected override bool VerifySignature(ReadOnlySpan<byte> data, ReadOnlySpan<byte> sig) 
+    {
         if (data == null)
         {
             throw new ArgumentNullException(nameof(data));
@@ -23,7 +34,7 @@ public class HmacUrlSigner<TAlg> : UrlSigner where TAlg : KeyedHashAlgorithm, ne
         }
 
         // Compute correct signature
-        var correctSig = this.GetSignature(key, data);
+        var correctSig = GetSignature(data);
         if (correctSig.Length != sig.Length) return false;
 
         // Constant time compare

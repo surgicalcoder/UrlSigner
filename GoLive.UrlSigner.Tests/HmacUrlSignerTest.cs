@@ -13,17 +13,17 @@ public class HmacUrlSignerTest
     [Fact]
     public static void RoundtripUri()
     {
-        var signer = new HmacUrlSigner<HMACSHA512>();
-        var signedUri = signer.Sign(Key, TestUri);
-        Assert.True(signer.Verify(Key, signedUri));
+        var signer = new HmacUrlSigner<HMACSHA512>(Key);
+        var signedUri = signer.Sign(TestUri);
+        Assert.True(signer.Verify(signedUri));
     }
 
     [Fact]
     public static void RoundtripString()
     {
-        var signer = new HmacUrlSigner<HMACSHA512>();
-        var signedString = signer.Sign(Key, TestString);
-        Assert.True(signer.Verify(Key, signedString));
+        var signer = new HmacUrlSigner<HMACSHA512>(Key);
+        var signedString = signer.Sign(TestString);
+        Assert.True(signer.Verify(signedString));
     }
 
     [Fact]
@@ -31,12 +31,12 @@ public class HmacUrlSignerTest
     {
         const string origUrl = "https://www.example.com#myFragment";
 
-        var signer = new HmacUrlSigner<HMACSHA512>();
-        var signedString = signer.Sign(Key, origUrl);
-        Assert.True(signer.Verify(Key, signedString));
+        var signer = new HmacUrlSigner<HMACSHA512>(Key);
+        var signedString = signer.Sign(origUrl);
+        Assert.True(signer.Verify(signedString));
         Assert.EndsWith("#myFragment", signedString); // we want preserve fragment component
 
         var signedStringWithoutFragment = signedString.Replace("#myFragment", "");
-        Assert.True(signer.Verify(Key, signedStringWithoutFragment));
+        Assert.True(signer.Verify(signedStringWithoutFragment));
     }
 }

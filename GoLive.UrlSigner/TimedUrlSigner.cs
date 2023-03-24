@@ -11,14 +11,15 @@ namespace GoLive.UrlSigner;
         {
             this.Signer = signer;
         }
-        public Uri Sign(ReadOnlySpan<byte> key, Uri url, TimeSpan ttl)
+        
+        public Uri Sign(Uri url, TimeSpan ttl)
         {
-            return new Uri(this.Sign(key, url.ToString().AsSpan(), ttl));
+            return new Uri(Sign(url.ToString().AsSpan(), ttl));
         }
 
-        public bool Verify(ReadOnlySpan<byte> key, Uri url) => this.Verify(key, url.ToString());
+        public bool Verify(Uri url) => Verify(url.ToString());
 
-        public string Sign(ReadOnlySpan<byte> key, ReadOnlySpan<char> url, TimeSpan ttl)
+        public string Sign(ReadOnlySpan<char> url, TimeSpan ttl)
         {
             if (url == null)
             {
@@ -33,10 +34,10 @@ namespace GoLive.UrlSigner;
             var expTimeStamp = DateTime.UtcNow.Add(ttl);
             url = url.AppendParameter("exp", WebUtility.UrlEncode(expTimeStamp.ToString("O")));
 
-            return this.Signer.Sign(key, url);
+            return Signer.Sign(url);
         }
 
-        public bool Verify(ReadOnlySpan<byte> key, ReadOnlySpan<char> url)
+        public bool Verify(ReadOnlySpan<char> url)
         {
             if (url == null)
             {
@@ -48,14 +49,14 @@ namespace GoLive.UrlSigner;
                 throw new ArgumentException("Value cannot be empty or whitespace only string.", nameof(url));
             }
 
-            var result = this.Signer.Verify(key, url);
+            var result = Signer.Verify(url);
              
             if (!result)
             {
                 return false;
             }
 
-            var unsignedUrl = url.RemoveLastParameter("sig", out var _);
+            var unsignedUrl = url.RemoveLastParameter("sig", out _);
             unsignedUrl.RemoveLastParameter("exp", out var expString);
 
             if (!DateTime.TryParse(WebUtility.UrlDecode(expString.ToString()),null, DateTimeStyles.AssumeUniversal, out var dt))

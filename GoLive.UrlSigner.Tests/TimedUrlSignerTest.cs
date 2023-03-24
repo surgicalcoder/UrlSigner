@@ -15,19 +15,19 @@ public class TimedUrlSignerTest
     [Fact]
     public static async Task ImmediateRoundtripUri()
     {
-        var signer = new TimedUrlSigner(new HmacUrlSigner<HMACSHA512>());
-        var signedUri = signer.Sign(Key, TestUri, TestTtl);
+        var signer = new TimedUrlSigner(new HmacUrlSigner<HMACSHA512>(Key));
+        var signedUri = signer.Sign(TestUri, TestTtl);
         await Task.Delay((int)TestTtl.TotalMilliseconds / 2);
-        Assert.True(signer.Verify(Key, signedUri));
+        Assert.True(signer.Verify(signedUri));
     }
 
     [Fact]
     public static async Task ImmediateRoundtripString()
     {
-        var signer = new TimedUrlSigner(new HmacUrlSigner<HMACSHA512>());
-        var signedString = signer.Sign(Key, TestString, TestTtl);
+        var signer = new TimedUrlSigner(new HmacUrlSigner<HMACSHA512>(Key));
+        var signedString = signer.Sign(TestString, TestTtl);
         await Task.Delay((int)TestTtl.TotalMilliseconds / 2);
-        Assert.True(signer.Verify(Key, signedString));
+        Assert.True(signer.Verify(signedString));
     }
 
     [Fact]
@@ -35,32 +35,32 @@ public class TimedUrlSignerTest
     {
         const string origUrl = "https://www.example.com#myFragment";
 
-        var signer = new TimedUrlSigner(new HmacUrlSigner<HMACSHA512>());
-        var signedString = signer.Sign(Key, origUrl, TestTtl);
+        var signer = new TimedUrlSigner(new HmacUrlSigner<HMACSHA512>(Key));
+        var signedString = signer.Sign(origUrl, TestTtl);
         await Task.Delay((int)TestTtl.TotalMilliseconds / 2);
-        Assert.True(signer.Verify(Key, signedString));
+        Assert.True(signer.Verify(signedString));
         Assert.EndsWith("#myFragment", signedString); // we want preserve fragment component
 
         var signedStringWithoutFragment = signedString.Replace("#myFragment", "");
-        Assert.True(signer.Verify(Key, signedStringWithoutFragment));
+        Assert.True(signer.Verify(signedStringWithoutFragment));
     }
 
     [Fact]
     public static async Task ExpiredRoundtripUri()
     {
-        var signer = new TimedUrlSigner(new HmacUrlSigner<HMACSHA512>());
-        var signedUri = signer.Sign(Key, TestUri, TestTtl);
+        var signer = new TimedUrlSigner(new HmacUrlSigner<HMACSHA512>(Key));
+        var signedUri = signer.Sign(TestUri, TestTtl);
         await Task.Delay((int)TestTtl.TotalMilliseconds * 2);
-        Assert.False(signer.Verify(Key, signedUri));
+        Assert.False(signer.Verify(signedUri));
     }
 
     [Fact]
     public static async Task ExpiredRoundtripString()
     {
-        var signer = new TimedUrlSigner(new HmacUrlSigner<HMACSHA512>());
-        var signedString = signer.Sign(Key, TestString, TestTtl);
+        var signer = new TimedUrlSigner(new HmacUrlSigner<HMACSHA512>(Key));
+        var signedString = signer.Sign(TestString, TestTtl);
         await Task.Delay((int)TestTtl.TotalMilliseconds * 2);
-        Assert.False(signer.Verify(Key, signedString));
+        Assert.False(signer.Verify(signedString));
     }
 
 }
