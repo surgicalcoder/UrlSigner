@@ -22,7 +22,7 @@ jobs:
         uses: nuget/setup-nuget@v1
       - name: Get Build Version
         run: |
-          echo "BUILD_VERSION=${{ format('{0}.{1}', env.BUILD_VER, github.GITHUB_RUN_NUMBER ) }}" >> $GITHUB_ENV
+          echo "BUILD_VERSION=${{ format('{0}.{1}', env.BUILD_VER, github.run_number ) }}" >> $GITHUB_ENV
       - name: Build
         run: dotnet pack $SOLUTION --configuration Release -p:Version=$BUILD_VERSION -p:PackageVersion=$BUILD_VERSION
       - name: Publish
