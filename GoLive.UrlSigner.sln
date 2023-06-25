@@ -4,6 +4,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GoLive.UrlSigner", "GoLive.
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GoLive.UrlSigner.Tests", "GoLive.UrlSigner.Tests\GoLive.UrlSigner.Tests.csproj", "{29135549-1240-4C4D-8D63-76A8A2F9063E}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GoLive.UrlSigner.Authentication", "GoLive.UrlSigner.Authentication\GoLive.UrlSigner.Authentication.csproj", "{2AC57590-51F8-427B-821D-EDD73866323D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -18,5 +20,9 @@ Global
 		{29135549-1240-4C4D-8D63-76A8A2F9063E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{29135549-1240-4C4D-8D63-76A8A2F9063E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{29135549-1240-4C4D-8D63-76A8A2F9063E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2AC57590-51F8-427B-821D-EDD73866323D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2AC57590-51F8-427B-821D-EDD73866323D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2AC57590-51F8-427B-821D-EDD73866323D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2AC57590-51F8-427B-821D-EDD73866323D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net6.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+
+        <PackageId>GoLive.UrlSigner.Authentication</PackageId>
+        <Authors>SurgicalCoder</Authors>
+        <Company>N/A</Company>
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+        <Description>
+            .net 6.0 URL signer and verifier (with Timed Url Signing), authentication module edition.
+        </Description>
+        <Copyright>Copyright 2021 - 2023 - SurgicalCoder</Copyright>
+        <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PublishRepositoryUrl>true</PublishRepositoryUrl>
+        <GenerateRepositoryUrlAttribute>true</GenerateRepositoryUrlAttribute>
+        <PackOnBuild>true</PackOnBuild>
+        <LangVersion>11</LangVersion>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Microsoft.AspNetCore.Authentication" Version="2.2.0" />
+      <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="6.31.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\GoLive.UrlSigner\GoLive.UrlSigner.csproj">
+<!--          <ReferenceOutputAssembly>true</ReferenceOutputAssembly>
+          <IncludeAssets>GoLive.UrlSigner.dll</IncludeAssets>-->
+      </ProjectReference>
+    </ItemGroup>
+
+</Project>
