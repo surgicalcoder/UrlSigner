@@ -1,8 +1,5 @@
 name: Publish to Nuget
 on:
-  push:
-    branches:
-      - master 
   workflow_dispatch:
 
 jobs:
@@ -26,6 +23,6 @@ jobs:
         run: |
           echo "BUILD_VERSION=${{ format('{0}.{1}', env.BUILD_VER, github.run_number ) }}" >> $env:GITHUB_ENV
       - name: Build
-        run: dotnet pack $SOLUTION --configuration Release -p:Version=$BUILD_VERSION -p:PackageVersion=$BUILD_VERSION -p:GeneratePackageOnBuild=false
+        run: dotnet pack $env:SOLUTION --configuration Release -p:Version=$env:BUILD_VERSION -p:PackageVersion=$env:BUILD_VERSION -p:GeneratePackageOnBuild=false
       - name: Publish
         run: nuget push **\*.nupkg -Source 'https://api.nuget.org/v3/index.json'
