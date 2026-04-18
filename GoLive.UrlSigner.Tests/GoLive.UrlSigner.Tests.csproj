@@ -26,6 +26,7 @@
     <ItemGroup>
       <ProjectReference Include="..\GoLive.UrlSigner\GoLive.UrlSigner.csproj" />
       <ProjectReference Include="..\GoLive.UrlSigner.Authentication\GoLive.UrlSigner.Authentication.csproj" />
+      <ProjectReference Include="..\GoLive.UrlSigner.MinimalApis\GoLive.UrlSigner.MinimalApis.csproj" />
     </ItemGroup>
 
     <ItemGroup>
