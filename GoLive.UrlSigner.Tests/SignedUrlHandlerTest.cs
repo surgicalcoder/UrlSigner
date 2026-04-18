@@ -46,6 +46,28 @@ public class SignedUrlHandlerTest
     }
 
     [Fact]
+    public async Task AuthenticateAsync_ReturnsSuccess_ForReorderedSignedUrlQuery()
+    {
+        var timeProvider = CreateTimeProvider();
+        var signedUrl = ReorderQuery(CreateSignedUrl("user-123", timeProvider), "exp", "sig", "token");
+        var options = new SignedUrlAuthenticationSchemeOptions
+        {
+            UrlSignerFactory = _ => TimedUrlSigner.Create(Key, timeProvider),
+            GetPrincipal = static (tokenBytes, _) =>
+            {
+                var id = Encoding.UTF8.GetString(tokenBytes.Span);
+                var identity = new ClaimsIdentity(new[] { new Claim(ClaimTypes.NameIdentifier, id) }, SignedUrlHandler.SchemeName);
+                return ValueTask.FromResult<ClaimsPrincipal?>(new ClaimsPrincipal(identity));
+            }
+        };
+
+        var result = await AuthenticateAsync(signedUrl, options);
+
+        Assert.True(result.Succeeded);
+        Assert.Equal("user-123", result.Principal?.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+    }
+
+    [Fact]
     public async Task AuthenticateAsync_Fails_WhenSigIsMissing()
     {
         var result = await AuthenticateAsync("/files/report?token=user-123&exp=1776515100", new SignedUrlAuthenticationSchemeOptions());
@@ -265,6 +287,51 @@ public class SignedUrlHandlerTest
     }
 
     private static FakeTimeProvider CreateTimeProvider() => new(DateTimeOffset.Parse("2026-04-18T12:00:00Z"));
+
+    private static string ReorderQuery(string url, params string[] orderedParameterNames)
+    {
+        var queryIndex = url.IndexOf('?');
+        if (queryIndex < 0)
+        {
+            return url;
+        }
+
+        var prefix = url[..queryIndex];
+        var segments = url[(queryIndex + 1)..].Split('&', StringSplitOptions.RemoveEmptyEntries);
+        var reorderedSegments = new string[segments.Length];
+        var index = 0;
+
+        foreach (var parameterName in orderedParameterNames)
+        {
+            foreach (var segment in segments)
+            {
+                if (segment.StartsWith(parameterName + "=", StringComparison.Ordinal))
+                {
+                    reorderedSegments[index++] = segment;
+                }
+            }
+        }
+
+        foreach (var segment in segments)
+        {
+            var alreadyAdded = false;
+            for (var i = 0; i < index; i++)
+            {
+                if (string.Equals(reorderedSegments[i], segment, StringComparison.Ordinal))
+                {
+                    alreadyAdded = true;
+                    break;
+                }
+            }
+
+            if (!alreadyAdded)
+            {
+                reorderedSegments[index++] = segment;
+            }
+        }
+
+        return $"{prefix}?{string.Join("&", reorderedSegments, 0, index)}";
+    }
 
     private static string CreateJwt(byte[]? signingKey = null)
     {

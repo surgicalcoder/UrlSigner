@@ -57,6 +57,19 @@ public class SignedUrlAuthenticationIntegrationTest
         Assert.Equal("user-123", await response.Content.ReadAsStringAsync());
     }
 
+    [Fact]
+    public async Task Pipeline_Authenticates_WhenSignedUrlQueryIsReordered()
+    {
+        await using var app = await CreateAppAsync();
+        using var client = app.GetTestClient();
+        var signedUrl = ReorderQuery(CreateSignedUrl("/tenant-a/files/report", "user-123"), "exp", "sig", "token");
+
+        var response = await client.GetAsync(signedUrl);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("user-123", await response.Content.ReadAsStringAsync());
+    }
+
     private static async Task<WebApplication> CreateAppAsync()
     {
         var builder = WebApplication.CreateBuilder();
@@ -105,6 +118,51 @@ public class SignedUrlAuthenticationIntegrationTest
     {
         var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(tokenValue));
         return TimedUrlSigner.Sign($"{path}?token={encodedToken}", TimeSpan.FromMinutes(5), Key);
+    }
+
+    private static string ReorderQuery(string url, params string[] orderedParameterNames)
+    {
+        var queryIndex = url.IndexOf('?');
+        if (queryIndex < 0)
+        {
+            return url;
+        }
+
+        var prefix = url[..queryIndex];
+        var segments = url[(queryIndex + 1)..].Split('&', StringSplitOptions.RemoveEmptyEntries);
+        var reorderedSegments = new string[segments.Length];
+        var index = 0;
+
+        foreach (var parameterName in orderedParameterNames)
+        {
+            foreach (var segment in segments)
+            {
+                if (segment.StartsWith(parameterName + "=", StringComparison.Ordinal))
+                {
+                    reorderedSegments[index++] = segment;
+                }
+            }
+        }
+
+        foreach (var segment in segments)
+        {
+            var alreadyAdded = false;
+            for (var i = 0; i < index; i++)
+            {
+                if (string.Equals(reorderedSegments[i], segment, StringComparison.Ordinal))
+                {
+                    alreadyAdded = true;
+                    break;
+                }
+            }
+
+            if (!alreadyAdded)
+            {
+                reorderedSegments[index++] = segment;
+            }
+        }
+
+        return $"{prefix}?{string.Join("&", reorderedSegments, 0, index)}";
     }
 }
 

@@ -58,4 +58,30 @@ public class HmacUrlSignerTest
 
         Assert.True(signer.Verify(signedUrl));
     }
+
+    [Fact]
+    public static void SignProducesMatchingSignaturesForEquivalentQueryOrders()
+    {
+        var signer = HmacUrlSigner<HMACSHA512>.Create(Key);
+        var signedUnorderedUrl = signer.Sign("https://www.example.com/?b=2&a=1");
+        var signedOrderedUrl = signer.Sign("https://www.example.com/?a=1&b=2");
+
+        Assert.Equal(ExtractSignature(signedOrderedUrl), ExtractSignature(signedUnorderedUrl));
+    }
+
+    [Fact]
+    public static void VerifySucceedsWhenSignedUrlQueryParametersAreReordered()
+    {
+        var signer = HmacUrlSigner<HMACSHA512>.Create(Key);
+        var signedUrl = signer.Sign("https://www.example.com/?b=2&a=1");
+        var reorderedSignedUrl = signedUrl.Replace("?b=2&a=1&sig=", "?a=1&b=2&sig=", StringComparison.Ordinal);
+
+        Assert.True(signer.Verify(reorderedSignedUrl));
+    }
+
+    private static string ExtractSignature(string signedUrl)
+    {
+        var sigIndex = signedUrl.LastIndexOf("sig=", StringComparison.Ordinal);
+        return sigIndex >= 0 ? signedUrl[(sigIndex + 4)..] : string.Empty;
+    }
 }

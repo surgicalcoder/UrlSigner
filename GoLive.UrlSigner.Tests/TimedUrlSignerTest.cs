@@ -91,6 +91,64 @@ public class TimedUrlSignerTest
         Assert.False(timedSigner.Verify(signedUrl));
     }
 
+    [Fact]
+    public static void VerifySucceedsWhenTimedSignedUrlQueryParametersAreReordered()
+    {
+        var timeProvider = new FakeTimeProvider(DateTimeOffset.Parse("2026-04-18T12:00:00Z"));
+        var signer = TimedUrlSigner.Create(Key, timeProvider);
+        var signedUrl = signer.Sign("https://www.example.com/?b=2&a=1", TestTtl);
+        var reorderedSignedUrl = ReorderQuery(signedUrl, "a", "b", "exp", "sig");
+
+        timeProvider.Advance(TestTtl / 2);
+
+        Assert.True(signer.Verify(reorderedSignedUrl));
+    }
+
+    private static string ReorderQuery(string url, params string[] orderedParameterNames)
+    {
+        var queryIndex = url.IndexOf('?');
+        if (queryIndex < 0)
+        {
+            return url;
+        }
+
+        var prefix = url[..queryIndex];
+        var segments = url[(queryIndex + 1)..].Split('&', StringSplitOptions.RemoveEmptyEntries);
+        var reorderedSegments = new string[segments.Length];
+        var index = 0;
+
+        foreach (var parameterName in orderedParameterNames)
+        {
+            foreach (var segment in segments)
+            {
+                if (segment.StartsWith(parameterName + "=", StringComparison.Ordinal))
+                {
+                    reorderedSegments[index++] = segment;
+                }
+            }
+        }
+
+        foreach (var segment in segments)
+        {
+            var alreadyAdded = false;
+            for (var i = 0; i < index; i++)
+            {
+                if (string.Equals(reorderedSegments[i], segment, StringComparison.Ordinal))
+                {
+                    alreadyAdded = true;
+                    break;
+                }
+            }
+
+            if (!alreadyAdded)
+            {
+                reorderedSegments[index++] = segment;
+            }
+        }
+
+        return $"{prefix}?{string.Join("&", reorderedSegments, 0, index)}";
+    }
+
     private sealed class FakeTimeProvider : TimeProvider
     {
         private DateTimeOffset currentUtcNow;

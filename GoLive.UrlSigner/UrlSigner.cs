@@ -1,5 +1,4 @@
-﻿using System;
-using System.Text;
+﻿using System.Text;
 using Microsoft.AspNetCore.WebUtilities;
 
 namespace GoLive.UrlSigner;
@@ -38,7 +37,8 @@ namespace GoLive.UrlSigner;
             }
 
             var baseUrl = url.RemoveFragment(out var fragment);
-            var data = Encoding.UTF8.GetBytes(baseUrl);
+            var canonicalBaseUrl = baseUrl.AsSpan().CanonicalizeQuery();
+            var data = Encoding.UTF8.GetBytes(canonicalBaseUrl);
 
             var sigData = GetSignature(data);
 
@@ -64,8 +64,15 @@ namespace GoLive.UrlSigner;
             {
                 var urlString = url.RemoveFragment().AsSpan().RemoveParameter("sig", out var sigString);
                 var sigData = WebEncoders.Base64UrlDecode(sigString);
-                var urlData = Encoding.UTF8.GetBytes(urlString);
-                return VerifySignature(urlData, sigData);
+                var canonicalUrlData = Encoding.UTF8.GetBytes(urlString.AsSpan().CanonicalizeQuery());
+
+                if (VerifySignature(canonicalUrlData, sigData))
+                {
+                    return true;
+                }
+
+                var legacyUrlData = Encoding.UTF8.GetBytes(urlString);
+                return VerifySignature(legacyUrlData, sigData);
             }
             catch (Exception)
             {

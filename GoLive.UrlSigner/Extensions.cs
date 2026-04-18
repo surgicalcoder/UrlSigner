@@ -1,5 +1,4 @@
-﻿using System;
-using System.Text;
+﻿using System.Text;
 
 namespace GoLive.UrlSigner;
 
@@ -7,12 +6,65 @@ public static class Extensions
 {
     private static readonly char[] QuerySeparatorChars = { '&', ';' };
 
+    internal static string CanonicalizeQuery(this ReadOnlySpan<char> url)
+    {
+        EnsureHasValue(url, nameof(url));
+
+        var baseUrl = url.RemoveFragment(out _);
+        var queryIndex = baseUrl.IndexOf('?');
+
+        if (queryIndex < 0 || queryIndex == baseUrl.Length - 1)
+        {
+            return baseUrl;
+        }
+
+        var path = baseUrl[..queryIndex];
+        var segments = ParseSegments(baseUrl[(queryIndex + 1)..]);
+
+        Array.Sort(segments, static (left, right) =>
+        {
+            var nameComparison = StringComparer.OrdinalIgnoreCase.Compare(left.Name, right.Name);
+            if (nameComparison != 0)
+            {
+                return nameComparison;
+            }
+
+            var valueComparison = StringComparer.Ordinal.Compare(left.Value, right.Value);
+            if (valueComparison != 0)
+            {
+                return valueComparison;
+            }
+
+            var textComparison = StringComparer.Ordinal.Compare(left.Text, right.Text);
+            if (textComparison != 0)
+            {
+                return textComparison;
+            }
+
+            return left.OriginalIndex.CompareTo(right.OriginalIndex);
+        });
+
+        var builder = new StringBuilder(path);
+        builder.Append('?');
+
+        for (var i = 0; i < segments.Length; i++)
+        {
+            if (i > 0)
+            {
+                builder.Append('&');
+            }
+
+            builder.Append(segments[i].Text);
+        }
+
+        return builder.ToString();
+    }
+
     internal static string RemoveParameter(this ReadOnlySpan<char> url, ReadOnlySpan<char> paramName, out string paramValue)
     {
         EnsureHasValue(url, nameof(url));
         EnsureHasValue(paramName, nameof(paramName));
 
-        var urlString = url.ToString();
         var baseUrl = url.RemoveFragment(out var fragment);
         var queryIndex = baseUrl.IndexOf('?');
 
@@ -135,7 +187,8 @@ public static class Extensions
             }
 
             var text = query[segmentStart..i];
-            segments[segmentIndex++] = new QuerySegment(separatorBefore, text);
+            segments[segmentIndex] = new QuerySegment(segmentIndex, separatorBefore, text);
+            segmentIndex++;
 
             if (i < query.Length)
             {
@@ -155,8 +208,17 @@ public static class Extensions
         }
     }
 
-    private readonly record struct QuerySegment(char SeparatorBefore, string Text)
+    private readonly record struct QuerySegment(int OriginalIndex, char SeparatorBefore, string Text)
     {
+        public string Name
+        {
+            get
+            {
+                var equalsIndex = Text.IndexOf('=');
+                return equalsIndex < 0 ? Text : Text[..equalsIndex];
+            }
+        }
+
         public string Value
         {
             get

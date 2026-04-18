@@ -234,7 +234,7 @@ Fragments (`#section`) are not part of the signature calculation.
 
 ### Query order
 
-Current behavior preserves the original query order. If query text changes, the signature will change too.
+Current behavior ignores the original query order.
 
 ### Parameter name comparison
 
