@@ -10,6 +10,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="10.0.5" />
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.0.1" />
         <PackageReference Include="xunit" Version="2.9.3" />
         <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
@@ -24,6 +25,11 @@
 
     <ItemGroup>
       <ProjectReference Include="..\GoLive.UrlSigner\GoLive.UrlSigner.csproj" />
+      <ProjectReference Include="..\GoLive.UrlSigner.Authentication\GoLive.UrlSigner.Authentication.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <FrameworkReference Include="Microsoft.AspNetCore.App" />
     </ItemGroup>
 
 </Project>

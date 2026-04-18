@@ -1,10 +1,10 @@
 ﻿using System.IdentityModel.Tokens.Jwt;
-using System.Net;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -14,60 +14,60 @@ namespace GoLive.UrlSigner.Authentication;
 public class SignedUrlHandler : AuthenticationHandler<SignedUrlAuthenticationSchemeOptions>
 {
     public const string SchemeName = "SignedUrl";
-    private TimedUrlSigner urlSigner;
-    private TokenValidationParameters jwtTokenValidationParameters;
-    
-    public SignedUrlHandler(IOptionsMonitor<SignedUrlAuthenticationSchemeOptions> options, ILoggerFactory logger, UrlEncoder encoder, 
-        ISystemClock clock, TimedUrlSigner urlSigner, TokenValidationParameters jwtTokenValidationParameters) : base(options, logger, encoder, clock)
+
+    public SignedUrlHandler(IOptionsMonitor<SignedUrlAuthenticationSchemeOptions> options, ILoggerFactory logger, UrlEncoder encoder) : base(options, logger, encoder)
     {
-        this.urlSigner = urlSigner;
-        this.jwtTokenValidationParameters = jwtTokenValidationParameters;
     }
     
     protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
     {
-        if (!Request.Query.ContainsKey("sig"))
+        if (!TryGetSingleQueryValue("sig", out _, out var sigFailure))
         {
-            return AuthenticateResult.Fail("Sig missing");
+            return sigFailure;
         }
 
-        if (!Request.Query.ContainsKey("exp"))
+        if (!TryGetSingleQueryValue("exp", out _, out var expFailure))
         {
-            return AuthenticateResult.Fail("Exp missing");
+            return expFailure;
         }
 
-        if (!Request.Query.ContainsKey("token"))
+        if (!TryGetSingleQueryValue("token", out var encodedToken, out var tokenFailure))
         {
-            return AuthenticateResult.Fail("Token missing");
+            return tokenFailure;
         }
 
-        var valid = urlSigner.Verify($"{WebUtility.UrlDecode(Request.Path)}{Request.QueryString}");
+        var urlSigner = ResolveUrlSigner();
+
+        if (urlSigner is null)
+        {
+            return AuthenticateResult.Fail("Signed URL authentication is not configured with a TimedUrlSigner or UrlSignerFactory.");
+        }
+
+        var requestTarget = string.Concat(Request.PathBase.ToUriComponent(), Request.Path.ToUriComponent(), Request.QueryString.ToUriComponent());
+        var valid = urlSigner.Verify(requestTarget);
 
         if (!valid)
         {
             return AuthenticateResult.Fail("Invalid signature");
         }
 
-        var token = WebEncoders.Base64UrlDecode(Request.Query["token"]).AsMemory();
-
         try
         {
-            ClaimsPrincipal principal;
+            var token = WebEncoders.Base64UrlDecode(encodedToken).AsMemory();
+            ClaimsPrincipal? principal;
 
-            if (Options.GetPrinciple != null)
+            if (Options.GetPrincipal != null)
             {
-                principal = await Options.GetPrinciple.Invoke(token);
+                principal = await Options.GetPrincipal(token, Context.RequestAborted).ConfigureAwait(false);
             }
             else
             {
-                var decoded = Encoding.UTF8.GetString(token.ToArray());
-                var tokenHandler = new JwtSecurityTokenHandler();
-                principal = tokenHandler.ValidateToken(decoded, jwtTokenValidationParameters, out _);
+                principal = ValidateJwtToken(token.Span);
             }
 
-            if (principal == null)
+            if (principal is null)
             {
-                return AuthenticateResult.Fail("Method returned null");
+                return AuthenticateResult.Fail("Principal resolver returned null.");
             }
             
             var ticket = new AuthenticationTicket(principal, Scheme.Name);
@@ -78,5 +78,50 @@ public class SignedUrlHandler : AuthenticationHandler<SignedUrlAuthenticationSch
             return AuthenticateResult.Fail(e);
         }
         
+    }
+
+    private TimedUrlSigner? ResolveUrlSigner()
+    {
+        if (Options.UrlSignerFactory is not null)
+        {
+            return Options.UrlSignerFactory(Context.RequestServices);
+        }
+
+        return Context.RequestServices.GetService<TimedUrlSigner>();
+    }
+
+    private ClaimsPrincipal ValidateJwtToken(ReadOnlySpan<byte> token)
+    {
+        var validationParameters = Options.TokenValidationParameters ?? Context.RequestServices.GetService<TokenValidationParameters>();
+
+        if (validationParameters is null)
+        {
+            throw new InvalidOperationException("TokenValidationParameters must be configured when GetPrincipal is not supplied.");
+        }
+
+        var decoded = Encoding.UTF8.GetString(token);
+        var tokenHandler = new JwtSecurityTokenHandler();
+        return tokenHandler.ValidateToken(decoded, validationParameters, out _);
+    }
+
+    private bool TryGetSingleQueryValue(string key, out string value, out AuthenticateResult failureResult)
+    {
+        if (!Request.Query.TryGetValue(key, out var values) || values.Count == 0)
+        {
+            value = string.Empty;
+            failureResult = AuthenticateResult.Fail($"{key} missing");
+            return false;
+        }
+
+        if (values.Count != 1 || string.IsNullOrWhiteSpace(values[0]))
+        {
+            value = string.Empty;
+            failureResult = AuthenticateResult.Fail($"{key} must be supplied exactly once");
+            return false;
+        }
+
+        value = values[0]!;
+        failureResult = AuthenticateResult.NoResult();
+        return true;
     }
 }

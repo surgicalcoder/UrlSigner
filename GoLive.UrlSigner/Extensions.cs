@@ -1,109 +1,176 @@
 ﻿using System;
+using System.Text;
 
 namespace GoLive.UrlSigner;
 
 public static class Extensions
+{
+    private static readonly char[] QuerySeparatorChars = { '&', ';' };
+
+    internal static string RemoveParameter(this ReadOnlySpan<char> url, ReadOnlySpan<char> paramName, out string paramValue)
     {
-        private static readonly char[] parameterCharArray = "?&;".ToCharArray();
+        EnsureHasValue(url, nameof(url));
+        EnsureHasValue(paramName, nameof(paramName));
 
-        internal static ReadOnlySpan<char> RemoveLastParameter(this ReadOnlySpan<char> url, ReadOnlySpan<char> paramName, out ReadOnlySpan<char> paramValue)
+        var urlString = url.ToString();
+        var baseUrl = url.RemoveFragment(out var fragment);
+        var queryIndex = baseUrl.IndexOf('?');
+
+        if (queryIndex < 0 || queryIndex == baseUrl.Length - 1)
         {
-            if (url == null)
+            throw new FormatException("Invalid URL format");
+        }
+
+        var path = baseUrl[..queryIndex];
+        var query = baseUrl[(queryIndex + 1)..];
+        var segments = ParseSegments(query);
+        var matchIndex = -1;
+        paramValue = string.Empty;
+
+        for (var i = 0; i < segments.Length; i++)
+        {
+            if (!segments[i].HasName(paramName))
             {
-                throw new ArgumentNullException(nameof(url));
+                continue;
             }
 
-            if (url.IsEmpty || url.IsWhiteSpace())
+            if (matchIndex >= 0)
             {
-                throw new ArgumentException("Value cannot be empty or whitespace only string.", nameof(url));
+                throw new FormatException($"Parameter '{paramName.ToString()}' appears more than once.");
             }
 
-            if (paramName == null)
+            matchIndex = i;
+            paramValue = segments[i].Value;
+        }
+
+        if (matchIndex < 0)
+        {
+            throw new FormatException($"Parameter '{paramName.ToString()}' was not found.");
+        }
+
+        var builder = new StringBuilder(path);
+        var hasQuery = false;
+
+        for (var i = 0; i < segments.Length; i++)
+        {
+            if (i == matchIndex)
             {
-                throw new ArgumentNullException(nameof(paramName));
+                continue;
             }
 
-            if (paramName.IsEmpty || paramName.IsWhiteSpace())
+            builder.Append(hasQuery ? segments[i].SeparatorBefore : '?');
+            builder.Append(segments[i].Text);
+            hasQuery = true;
+        }
+
+        builder.Append(fragment);
+        return builder.ToString();
+    }
+
+    internal static string AppendParameter(this ReadOnlySpan<char> url, ReadOnlySpan<char> paramName, ReadOnlySpan<char> paramValue)
+    {
+        EnsureHasValue(url, nameof(url));
+        EnsureHasValue(paramName, nameof(paramName));
+
+        var baseUrl = RemoveFragment(url, out var fragment);
+        var separator = baseUrl.Contains('?') ? '&' : '?';
+        return string.Concat(baseUrl, separator.ToString(), paramName.ToString(), "=", paramValue.ToString(), fragment);
+    }
+
+    internal static bool ContainsParameter(this ReadOnlySpan<char> url, ReadOnlySpan<char> paramName)
+    {
+        EnsureHasValue(url, nameof(url));
+        EnsureHasValue(paramName, nameof(paramName));
+
+        var baseUrl = url.RemoveFragment();
+        var queryIndex = baseUrl.IndexOf('?');
+
+        if (queryIndex < 0 || queryIndex == baseUrl.Length - 1)
+        {
+            return false;
+        }
+
+        foreach (var segment in ParseSegments(baseUrl[(queryIndex + 1)..]))
+        {
+            if (segment.HasName(paramName))
             {
-                throw new ArgumentException("Value cannot be empty or whitespace only string.", nameof(paramName));
-            }
-
-            var nameLength = paramName.Length;
-
-            var baseUrl = url.RemoveFragment(out var fragment);
-
-            var lastSeparatorIndex = baseUrl.LastIndexOfAny(parameterCharArray);
-
-            if (lastSeparatorIndex < 1 || lastSeparatorIndex > url.Length - (nameLength + 3) || !url.Slice(lastSeparatorIndex + 1, nameLength + 1).Equals($"{paramName}=".AsSpan(), StringComparison.OrdinalIgnoreCase))
-            {
-                throw new FormatException("Invalid URL format");
-            }
-
-            paramValue = baseUrl[(lastSeparatorIndex + nameLength + 2)..];
-            var shorterUrl = baseUrl[..lastSeparatorIndex];
-
-            if (fragment.IsEmpty || fragment.IsWhiteSpace())
-            {
-                return shorterUrl;
-            }
-            else
-            {
-                return $"{shorterUrl}{fragment}".AsSpan(); // Todo need to make better
+                return true;
             }
         }
 
-        internal static ReadOnlySpan<char> AppendParameter(this ReadOnlySpan<char> url, ReadOnlySpan<char> paramName, ReadOnlySpan<char> paramValue)
+        return false;
+    }
+
+    internal static string RemoveFragment(this ReadOnlySpan<char> url) => RemoveFragment(url, out _);
+
+    internal static string RemoveFragment(this ReadOnlySpan<char> url, out string fragment)
+    {
+        EnsureHasValue(url, nameof(url));
+
+        var urlString = url.ToString();
+        var fragmentIndex = urlString.IndexOf('#');
+
+        if (fragmentIndex < 0)
         {
-            if (url == null)
-            {
-                throw new ArgumentNullException(nameof(url));
-            }
-
-            if (url.IsEmpty || url.IsWhiteSpace())
-            {
-                throw new ArgumentException("Value cannot be empty or whitespace only string.", nameof(url));
-            }
-
-            if (paramName == null)
-            {
-                throw new ArgumentNullException(nameof(paramName));
-            }
-
-            if (paramName.IsEmpty || paramName.IsWhiteSpace())
-            {
-                throw new ArgumentException("Value cannot be empty or whitespace only string.", nameof(paramName));
-            }
-
-            var baseUrl = RemoveFragment(url, out var fragment);
-            var separator = baseUrl.Contains('?') ? "&" : "?";
-
-            return $"{baseUrl}{separator}{paramName}={paramValue}{fragment}".AsSpan();
+            fragment = string.Empty;
+            return urlString;
         }
 
-        internal static ReadOnlySpan<char> RemoveFragment(this ReadOnlySpan<char> url) => RemoveFragment(url, out _);
+        fragment = urlString[fragmentIndex..];
+        return urlString[..fragmentIndex];
+    }
 
-        internal static ReadOnlySpan<char> RemoveFragment(this ReadOnlySpan<char> url, out ReadOnlySpan<char> fragment)
+    private static QuerySegment[] ParseSegments(string query)
+    {
+        var segments = new QuerySegment[query.Count(c => c is '&' or ';') + 1];
+        var segmentStart = 0;
+        var separatorBefore = '&';
+        var segmentIndex = 0;
+
+        for (var i = 0; i <= query.Length; i++)
         {
-            if (url == null)
+            if (i < query.Length && !QuerySeparatorChars.AsSpan().Contains(query[i]))
             {
-                throw new ArgumentNullException(nameof(url));
+                continue;
             }
 
-            if (url.IsEmpty || url.IsWhiteSpace())
+            var text = query[segmentStart..i];
+            segments[segmentIndex++] = new QuerySegment(separatorBefore, text);
+
+            if (i < query.Length)
             {
-                throw new ArgumentException("Value cannot be empty or whitespace only string.", nameof(url));
+                separatorBefore = query[i];
+                segmentStart = i + 1;
             }
+        }
 
-            var fragmentIndex = url.IndexOf('#');
+        return segments;
+    }
 
-            if (fragmentIndex < 0)
-            {
-                fragment = null;
-                return url;
-            }
-
-            fragment = url[fragmentIndex..];
-
-            return url[..fragmentIndex];
+    private static void EnsureHasValue(ReadOnlySpan<char> value, string paramName)
+    {
+        if (value.IsEmpty || value.IsWhiteSpace())
+        {
+            throw new ArgumentException("Value cannot be empty or whitespace only string.", paramName);
         }
     }
+
+    private readonly record struct QuerySegment(char SeparatorBefore, string Text)
+    {
+        public string Value
+        {
+            get
+            {
+                var equalsIndex = Text.IndexOf('=');
+                return equalsIndex < 0 ? string.Empty : Text[(equalsIndex + 1)..];
+            }
+        }
+
+        public bool HasName(ReadOnlySpan<char> name)
+        {
+            var equalsIndex = Text.IndexOf('=');
+            var key = equalsIndex < 0 ? Text.AsSpan() : Text.AsSpan(0, equalsIndex);
+            return key.Equals(name, StringComparison.OrdinalIgnoreCase);
+        }
+    }
+}
