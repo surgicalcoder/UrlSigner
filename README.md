@@ -32,6 +32,7 @@ The core package provides:
 The authentication package adds:
 
 - an ASP.NET Core authentication handler for signed URLs
+- an MVC/controller attribute for plain signed URL validation
 - direct key-based registration, so you do **not** need to register a singleton `TimedUrlSigner`
 
 The Minimal API package adds:
@@ -212,31 +213,37 @@ This registration path creates the `TimedUrlSigner` internally from the supplied
 
 This route validates `exp` + `sig` only. It does **not** require `token` and does **not** create a principal.
 
+First register MVC signed URL validation:
+
 ```csharp
-using GoLive.UrlSigner;
+using GoLive.UrlSigner.Authentication;
+
+var key = Convert.FromHexString("00112233445566778899AABBCCDDEEFF");
+
+builder.Services.AddControllers();
+builder.Services.AddSignedUrlValidation(key);
+```
+
+Then decorate the controller or action with `[RequireSignedUrl]`:
+
+```csharp
+using GoLive.UrlSigner.Authentication;
 using Microsoft.AspNetCore.Mvc;
 
 [ApiController]
 [Route("downloads")]
 public class DownloadsController : ControllerBase
 {
+	[RequireSignedUrl]
 	[HttpGet("plain")]
-	public IActionResult Plain([FromServices] TimedUrlSigner signer)
+	public IActionResult Plain()
 	{
-		var requestTarget = string.Concat(
-			Request.PathBase.ToUriComponent(),
-			Request.Path.ToUriComponent(),
-			Request.QueryString.ToUriComponent());
-
-		if (!signer.Verify(requestTarget))
-		{
-			return Unauthorized();
-		}
-
 		return Ok("Signed URL is valid.");
 	}
 }
 ```
+
+You can also put `[RequireSignedUrl]` on the controller class if every action in that controller should require a valid signed URL.
 
 #### Controller route with full token support
 
@@ -263,7 +270,7 @@ public class DownloadsController : ControllerBase
 
 So in MVC terms:
 
-- **plain route** = manual `TimedUrlSigner.Verify(...)`
+- **plain route** = `AddSignedUrlValidation(...)` + `[RequireSignedUrl]`
 - **full token route** = `AddSignedUrlAuthentication(...)` + `[Authorize(AuthenticationSchemes = SignedUrlHandler.SchemeName)]`
 
 ### JWT validation path
