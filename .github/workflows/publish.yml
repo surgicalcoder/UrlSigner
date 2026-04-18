@@ -6,7 +6,7 @@ jobs:
   publish:
     env:
      SOLUTION: 'GoLive.UrlSigner.sln'
-     BUILD_VER : '3.0'
+     BUILD_VER : '4.0'
     name: build, pack & publish
     runs-on: windows-latest
     steps:
